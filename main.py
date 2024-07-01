@@ -4,19 +4,21 @@ import datetime
 import subprocess
 
 
-def clear_calling_func(ipath: str = 'u:\\prg\\test\\', list_promo=None):
+def clear_calling_func(ipath: str = 'u:\\prg\\test\\',
+                       list_promo=None,
+                       file_calling: str = '_Продажа.prg'):
     """
-    перебор файла _Продажа.prg и исключение протухших акций
+    перебор файла вызова функций (обычно это _Продажа.prg) и исключение протухших акций
     получаем список строк которые должны остаться в файле
     :param ipath:
     :param list_promo:
+    :param file_calling str файл из которого обычно вызываются функции
     :return:
     """
     if list_promo is None:  #список истекших акций
         list_promo = ['1212', '1501']
     list_promo2 = [x + '()' for x in list_promo]
     new_selling_list = []
-    file_calling = '_Продажа.prg'
     pattern_number = r'\d{4}\(\)'
     with open(ipath + file_calling, 'r', encoding='cp866') as f_calling:
         selling_list = f_calling.readlines()
@@ -92,9 +94,13 @@ def del_ended_prg(ipath: str = 'u:\\prg\\test\\', list_promo=None):
 def main():
     path_prg = 'u:\\prg\\test\\'
     promo_list = []
-    promo_list = find_ended_func(ipath=path_prg)
-    new_calling_promo = clear_calling_func(ipath=path_prg, list_promo=promo_list)
+    promo_list = find_ended_func(ipath=path_prg)  #поиск кончившихся функций
+    #очистка файла вызова функций от тех которые кончились
+    new_calling_promo = clear_calling_func(ipath=path_prg, list_promo=promo_list, file_calling='_Продажа.prg')
     new_prg_file(path=path_prg, name='_Продажа.prg', list_string_file=new_calling_promo)
+    # очистка файла вызова функций от тех которые кончились
+    new_calling_promo = clear_calling_func(ipath=path_prg, list_promo=promo_list, file_calling='_СписокБлокировокВозвратов.prg')
+    new_prg_file(path=path_prg, name='_СписокБлокировокВозвратов.prg', list_string_file=new_calling_promo)
     del_ended_prg(ipath=path_prg, list_promo=promo_list)
     # print(promo_list)
 
