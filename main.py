@@ -19,18 +19,21 @@ def clear_calling_func(ipath: str = 'u:\\prg\\test\\',
     """
     if list_promo is None:  #список истекших акций
         list_promo = ['1212', '1501']
-    # list_promo2 = [x + '()' for x in list_promo]
     new_selling_list = []
-    pattern_number = r'\d{3,5}'
+    pattern_number_akcii = r'\d{3,5}'
+    pattern_number = r'\b.*_Акция_(?!(?:6099|2571))\d{1,4}\b'
     with open(ipath + file_calling, 'r', encoding='cp866') as f_calling:
         selling_list = f_calling.readlines()
     for elem in selling_list:
         match_s = re.search(pattern_number, elem)
-        new_promo_str = elem
-        if match_s and match_s[0] in list_promo:
-            new_promo_str = ''
-        if new_promo_str != '':
-            new_selling_list.append(new_promo_str)
+        if match_s:
+            match_number = re.search(pattern_number_akcii, match_s[0])
+        else:
+            match_number = []
+        if match_s and match_number[0] in list_promo:
+            new_selling_list.append('')
+        else:
+            new_selling_list.append(elem)
     return new_selling_list
 
 def new_prg_file(path: str = 'u:\\prg\\test\\',
@@ -57,7 +60,10 @@ def find_ended_func(ipath: str = 'u:\\prg\\test\\'):
     """
 
     file_list = os.listdir(ipath)
-    pattern = r'_ПроверкаДат_\d{0,4}.prg'
+    # pattern_number = r'\b(?!\d*6099\b)\d{3,5}\b'
+    # оставляем акцию 6099 - это отключение разрешительного режима
+    # оставляем акцию 2571 - это список украденных сертификатов
+    pattern = r'_ПроверкаДат_(?!\d*6099|\d*2571\b)\d{0,4}.prg'
     pattern_date = r'\d{2}[.]\d{2}[.]\d{4}'
     pattern_number_promo = r'\d{1,4}'
     promo_list = []
@@ -139,8 +145,9 @@ def find_not_used_prg(ipath: str = 'u:\\prg\\test\\'):
 
 
 def main():
+    path_prg = 'u:\\prg\\__\\'
+    # path_prg = 'd:\\kassa\\prg\\'
     path_prg = 'u:\\prg\\test\\'
-    path_prg = 'd:\\kassa\\prg\\'
     # find_not_used_prg(ipath=path_prg)
     promo_list = []
     promo_list = find_ended_func(ipath=path_prg)  #поиск кончившихся функций
