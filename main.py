@@ -2,6 +2,8 @@ import os
 import re
 import datetime
 import subprocess
+import pprint
+import json
 
 
 def clear_calling_func(ipath: str = 'u:\\prg\\test\\',
@@ -17,15 +19,15 @@ def clear_calling_func(ipath: str = 'u:\\prg\\test\\',
     """
     if list_promo is None:  #список истекших акций
         list_promo = ['1212', '1501']
-    list_promo2 = [x + '()' for x in list_promo]
+    # list_promo2 = [x + '()' for x in list_promo]
     new_selling_list = []
-    pattern_number = r'\d{4}\(\)'
+    pattern_number = r'\d{3,5}'
     with open(ipath + file_calling, 'r', encoding='cp866') as f_calling:
         selling_list = f_calling.readlines()
     for elem in selling_list:
         match_s = re.search(pattern_number, elem)
         new_promo_str = elem
-        if match_s and match_s[0] in list_promo2:
+        if match_s and match_s[0] in list_promo:
             new_promo_str = ''
         if new_promo_str != '':
             new_selling_list.append(new_promo_str)
@@ -67,7 +69,7 @@ def find_ended_func(ipath: str = 'u:\\prg\\test\\'):
                     for line in file_prg:
                         match = re.findall(pattern_date, line)
                         if match:
-                            if datetime.datetime.strptime(match[1], '%d.%m.%Y') < datetime.datetime.today():
+                            if datetime.datetime.strptime(match[1], '%d.%m.%Y').date() < datetime.datetime.today().date():
                                 number_promo = re.search(pattern_number_promo, filename)
                                 promo_list.append(number_promo[0])
                                 print(filename)
@@ -80,27 +82,75 @@ def del_ended_prg(ipath: str = 'u:\\prg\\test\\', list_promo=None):
     :param list_promo:
     :return:
     """
-    procs = []
+
     if list_promo is None:  #список истекших акций
         list_promo = []
+    procs = []
+    # Запускаем процессы
     for elem in list_promo:
-        p = subprocess.Popen('start /B del {1}*{0}*.prg /Q'.format(elem, ipath), encoding='cp1251', shell=True)
+        command = f'for %f in ("{ipath}*{elem}*.prg") do move "%f" "d:\\files\\qr\\\\"'
+        p = subprocess.Popen(
+            command,
+            shell=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
         procs.append(p)
+
+    # Ждем завершения всех процессов и обрабатываем вывод
     for proc in procs:
-        proc.wait()
-        print(proc.returncode)
+        stdout, stderr = proc.communicate()
+        # Декодируем вывод из кодировки cp866
+        stdout_decoded = stdout.decode('cp866') if stdout else ''
+        stderr_decoded = stderr.decode('cp866') if stderr else ''
+
+        print(f"Return code: {proc.returncode}")
+        if stdout_decoded:
+            print(f"Standard output:\n{stdout_decoded}")
+        if stderr_decoded:
+            print(f"Error output:\n{stderr_decoded}")
+
+def find_not_used_prg(ipath: str = 'u:\\prg\\test\\'):
+    file_list = os.listdir(ipath)
+    pattern = r'(?i)Функция .*\s*\([^)]*\)'
+    pattern_prg = r'.*.prg'
+    pattern_number_promo = r'\d{1,4}'
+    list_funk_sbis = []
+    prg_count = dict()
+    # Перебор файлов
+    for filename in file_list:
+        if re.fullmatch(pattern_prg, filename):
+            with open(ipath + filename, 'r', encoding='cp866') as file_prg:
+                for line in file_prg:
+                    match = re.search(pattern, line)
+                    if match:
+                        sbis_funk = match[0].split(' ')[1].split('(')[0]
+                        list_funk_sbis.append(sbis_funk)
+                        prg_count[sbis_funk] = prg_count.get(sbis_funk, 0) + 1
+                        print(sbis_funk)
+
+        #                 if datetime.datetime.strptime(match[1], '%d.%m.%Y') < datetime.datetime.today():
+        #                     number_promo = re.search(pattern_number_promo, filename)
+        #                     promo_list.append(number_promo[0])
+        #                     print(filename)
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(prg_count)
+        # return promo_list
 
 
 def main():
     path_prg = 'u:\\prg\\test\\'
+    path_prg = 'd:\\kassa\\prg\\'
+    # find_not_used_prg(ipath=path_prg)
     promo_list = []
     promo_list = find_ended_func(ipath=path_prg)  #поиск кончившихся функций
-    #очистка файла вызова функций от тех которые кончились
+    # #очистка файла вызова функций от тех которые кончились
     new_calling_promo = clear_calling_func(ipath=path_prg, list_promo=promo_list, file_calling='_Продажа.prg')
     new_prg_file(path=path_prg, name='_Продажа.prg', list_string_file=new_calling_promo)
-    # очистка файла вызова функций от тех которые кончились
-    new_calling_promo = clear_calling_func(ipath=path_prg, list_promo=promo_list, file_calling='_СписокБлокировокВозвратов.prg')
-    new_prg_file(path=path_prg, name='_СписокБлокировокВозвратов.prg', list_string_file=new_calling_promo)
+    # # очистка файла вызова функций от тех которые кончились
+    new_calling_promo = clear_calling_func(ipath=path_prg, list_promo=promo_list, file_calling='_ПечатьКупонаPY.prg')
+    new_prg_file(path=path_prg, name='_ПечатьКупонаPY.prg', list_string_file=new_calling_promo)
+    # удаление кончившихся функций
     del_ended_prg(ipath=path_prg, list_promo=promo_list)
     # print(promo_list)
 
